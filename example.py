@@ -2,10 +2,9 @@ import TensorMap
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
-import json
 import os
 
-np.random.seed(100)
+np.random.seed(88)
 
 def generate_test_data(frame_num,bone_num,miss_rat=0,inc_rat=0):
     n = frame_num
@@ -67,14 +66,48 @@ def generate_image(num):
     return img
 
 n = 20
-m = 5
-mis = 0.1
-inc_rat = 0.2
-curpath = 'D:\\paper\\testtensor'
+m = 6
+mis = 0.3
+inc_rat = 0.5
+curpath = 'TmpData/'
 
 data = generate_test_data(n,m,mis,inc_rat)
 Plist, mlist, rbone2gbone, gbone2rbone = data
 
+#np.save(os.path.join(curpath,'data.npy'),data)
 
 tensor = TensorMap.SynTensorMap(n,mlist,Plist)
-Q = tensor.solution()
+Q = tensor.rounded_solution(0.5,1,1)
+#Q = np.load(os.path.join(curpath,'sol.npy'))
+img = generate_image(m)
+#np.save(os.path.join(curpath,'sol.npy'),Q)
+
+color_num = np.size(Q[0])
+cmap = plt.get_cmap('gist_ncar')
+colors_set = cmap(np.linspace(0, 1,color_num+1))[:,0:3]
+
+
+cont = 0
+for i in range(n):
+    fimg = np.zeros([256,256,3],np.float32)
+    tmp = mlist[i]
+    for j in range(cont,cont+mlist[i]):
+        ind = gbone2rbone[i][j-cont]
+        print('ind:',ind)
+        S = np.where(img==ind)
+        l = np.size(S[0])
+        # print('k:',k)
+        p = np.array(Q[j])
+        t = np.where(p == 1)[0][0]
+        #print('P j cont', p, j, cont, mlist[i])
+        #print('t', t)
+        # print('np:', np.shape( colors_set[t][0:3] * 255) )
+
+        for k in range(l):
+            fimg[ S[0][k] ][ S[1][k] ] = colors_set[t] * 255
+    cont += mlist[i]
+    #print(fimg)
+    #cv2.imshow('s',fimg.astype(np.uint8))
+    #cv2.imshow('ss',img*255)
+    #cv2.waitKey()
+    cv2.imwrite(os.path.join(curpath,'%d.png'%i),fimg.astype(np.uint8))
