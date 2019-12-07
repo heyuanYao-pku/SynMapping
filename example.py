@@ -77,7 +77,7 @@ Plist, mlist, rbone2gbone, gbone2rbone = data
 #np.save(os.path.join(curpath,'data.npy'),data)
 
 tensor = TensorMap.SynTensorMap(n,mlist,Plist)
-Q = tensor.rounded_solution(0.5,1,1)
+Q = tensor.rounded_solution(0.5)
 #Q = np.load(os.path.join(curpath,'sol.npy'))
 img = generate_image(m)
 #np.save(os.path.join(curpath,'sol.npy'),Q)
