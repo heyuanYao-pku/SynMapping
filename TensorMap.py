@@ -36,7 +36,7 @@ class SynTensorMap:
         if Not_Build==False: # Check Inputs
 
             assert np.size(part_num_list) == shape_num, 'Length of part num list is not equal to shape num\n'
-            assert np.shape(Map_list) == (shape_num,shape_num), 'Shape of Map_list is not equal to (shape num, shape num)\n'
+            assert np.shape(Map_list) == (shape_num,shape_num), 'Shape of Map_list is not equal to (%d, %d)\n' %(shape_num,shape_num)
             for i in range(shape_num):
                 for j in range(shape_num):
                     assert np.shape(Map_list[i][j]) == (part_num_list[j],part_num_list[i]) , \
@@ -74,7 +74,6 @@ class SynTensorMap:
         n = self.n
         for i in range(n):
             for j in range(i,n):
-
                 k = ( sum(sum(self.Plist[i][j])) >= sum(sum(self.Plist[j][i])))
                 if k==True:
                     self.P[self.indBegin[j]:self.indEnd[j],self.indBegin[i]:self.indEnd[i]] = self.Plist[i][j]
@@ -180,6 +179,7 @@ class SynTensorMap:
             else:
                 print("C OK and e3 is ", self.e3)
 
+            '''
             ans1 = np.zeros(np.shape(self.Wrst), np.float)
             for c in range(self.m_bar):
                 tmp = np.outer(self.Ax[:, c], self.Bx[:, c])
@@ -191,6 +191,7 @@ class SynTensorMap:
             if y<=3000:
                 print("l2 loss is ", y," and break")
                 #break;
+            '''
 
             d =  max((self.e1,self.e2,self.e3))
             print('fraction rate = ',d)
@@ -199,18 +200,18 @@ class SynTensorMap:
 
 
 
-        factors = parafac(self.Wrst*self.R,rank = self.m_bar, n_iter_max=100)
+        #factors = parafac(self.Wrst*self.R,rank = self.m_bar, n_iter_max=100)
         #print(type(factors))
-        ans1 = np.zeros(np.shape(self.Wrst),np.float )
-        ans2 = tl.kruskal_to_tensor(factors)
-        for c in range(self.m_bar):
-            tmp = np.outer(self.Ax[:,c],self.Bx[:,c])
-            tmp = np.outer( tmp , self.Cx[:,c] )
-            tmp = np.reshape(tmp,np.shape(ans1))
-            ans1 += tmp
-        print(np.sum( (self.Wrst*(self.R-ans1)**2 ) ), np.sum( (self.Wrst*(self.R-ans2)**2 )) , np.sum( (self.Wrst *(ans1-ans2)**2)))
+        #ans1 = np.zeros(np.shape(self.Wrst),np.float )
+        #ans2 = tl.kruskal_to_tensor(factors)
+        #for c in range(self.m_bar):
+        #    tmp = np.outer(self.Ax[:,c],self.Bx[:,c])
+        #    tmp = np.outer( tmp , self.Cx[:,c] )
+        #    tmp = np.reshape(tmp,np.shape(ans1))
+        #    ans1 += tmp
+        #print(np.sum( (self.Wrst*(self.R-ans1)**2 ) ), np.sum( (self.Wrst*(self.R-ans2)**2 )) , np.sum( (self.Wrst *(ans1-ans2)**2)))
 
-        _,factors = parafac(self.Wrst*self.R,rank = self.m_bar, n_iter_max=100)
+        #_,factors = parafac(self.Wrst*self.R,rank = self.m_bar, n_iter_max=100)
         #self.Ax = factors[0]
         #self.Bx = factors[1]
         tmp = self.Bx.dot(np.transpose(self.Ax)) + self.Ax.dot(np.transpose(self.Bx))
@@ -246,8 +247,9 @@ class SynTensorMap:
         # 求最大的gap来确定m_bar
         l = len(eigvalue)
         dv = eigvalue[0:l-1] - eigvalue[1:l]
+        print("eigvalue",eigvalue)
         m_bar = dv.argmax()+1 # 因为python是从零开始标的
-
+        #m_bar = max(m_bar,4)
         # 获得AB初值
         tmp  = np.dot( eigvector[:,0:m_bar] , np.diag(eigvalue[0:m_bar])**0.5 )
         #tmp = np.random.random(np.shape(tmp))
@@ -361,7 +363,7 @@ class SynTensorMap:
         return ans
 
     ######### Round ##########
-    def rounded_solution(self, th=0.5, k=1, t=1, sol=None):
+    def rounded_solution(self, th=0.5, sol=None):
 
         '''
         :param th: 两个向量大于th算是一类
@@ -389,7 +391,7 @@ class SynTensorMap:
 
             cur_ans = np.zeros([n, 1], np.int)
             cur_ans[r] = 1
-            flag[r] = flag[r] + 1
+            flag[r] = 1
 
             ob = np.where(N > r)
             ob = np.min(ob)
@@ -399,23 +401,22 @@ class SynTensorMap:
 
                     cc = np.dot(sol[r, :], np.transpose(sol[N[ob1 - 1] : N[ob1], :]))
                     q = flag[ N[ob1 - 1]:N[ob1] ]
-                    mx = cc[ np.where( q <= t-1 ) ].copy()
-
-                    mx = np.sort(mx)
-                    mx = mx[::-1]
-                    if np.size(mx) >= k:
-                        mx = mx[0:k]
-
-                    for j in mx:
-                        z = np.zeros([0,0],np.int)
-                        if j > th:
-                            z = np.where(cc == j) + N[ob1 - 1]
-                            z = z[np.where( z <= N[ob1])]
-                        if np.size(z) > 0:
-                            cur_ans[z] = 1
-                            flag[z] +=  1
+                    l = len(cc)
+                    mind = -1
+                    for ind in range(l):
+                        if (mind == -1 or cc[ind] >= cc[mind]) and q[ind] == 0:
+                            mind = ind
+                            if r == 6 and ob1 == 2:
+                                print("try %d"%ind)
+                    if mind == -1 or cc[mind] <th:
+                        continue
+                    else:
+                        if r==6 and ob1 == 2:
+                            print(mind,flag[N[ob1-1]+mind],q[mind],"dsfnlakfdafd")
+                        cur_ans[N[ob1-1] + mind] = 1
+                        flag[N[ob1-1] + mind] =1
             ans = np.hstack([ans, cur_ans])
-            self.rounded_sol = ans.copy()
+        self.rounded_sol = ans.copy()
         return ans
 
     ######### Tools ##########
