@@ -381,7 +381,8 @@ class SynTensorMap:
 
         for r in range(n):
             if(sum(sol[r]**2)**0.5 ==0):
-                print('asdasfafas',sum(sol[r]**2))
+                if(sum(sol[r]**2)) == 0:
+                    continue
             sol[r] = sol[r] / sum(sol[r]**2)**0.5
 
         N = np.cumsum(self.mList)
@@ -409,9 +410,11 @@ class SynTensorMap:
                     mind = []
 
                     for ind in range(l):
-                        if  len( mind) < k   and q[ind] == 0:
+                        if  q[ind] == 0:
                             mind.append( ind )
                     mind.sort(key= lambda i: cc[i],reverse=True)
+                    if(len(mind) > k):
+                        mind = mind[0:k]
 
 
                     for idx in range( len(mind) ):
@@ -431,6 +434,7 @@ class SynTensorMap:
                             continue
 
                         cur_center = cur_center/2 +  sol[N[ob1 - 1] + i,:]/2
+                        cur_center = cur_center / np.sum(cur_center**2)**0.5
                         cur_ans[N[ob1 - 1] + i] = 1
                         flag[N[ob1 - 1] + i] = 1
 
