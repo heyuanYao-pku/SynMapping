@@ -363,7 +363,7 @@ class SynTensorMap:
         return ans
 
     ######### Round ##########
-    def rounded_solution(self, th=0.5, sol=None):
+    def rounded_solution(self, th=0.5, k = 1 ,sol=None):
 
         '''
         :param th: 两个向量大于th算是一类
@@ -380,6 +380,8 @@ class SynTensorMap:
         n, m = np.shape(sol)
 
         for r in range(n):
+            if(sum(sol[r]**2)**0.5 ==0):
+                print('asdasfafas',sum(sol[r]**2))
             sol[r] = sol[r] / sum(sol[r]**2)**0.5
 
         N = np.cumsum(self.mList)
@@ -396,25 +398,42 @@ class SynTensorMap:
             ob = np.where(N > r)
             ob = np.min(ob)
 
+            cur_center = sol[r, :]
             if ob < self.n:
                 for ob1 in range(ob + 1, self.n):
 
-                    cc = np.dot(sol[r, :], np.transpose(sol[N[ob1 - 1] : N[ob1], :]))
+                    cc = np.dot(cur_center, np.transpose(sol[N[ob1 - 1] : N[ob1], :]))
                     q = flag[ N[ob1 - 1]:N[ob1] ]
                     l = len(cc)
-                    mind = -1
+
+                    mind = []
+
                     for ind in range(l):
-                        if (mind == -1 or cc[ind] >= cc[mind]) and q[ind] == 0:
-                            mind = ind
-                            if r == 6 and ob1 == 2:
-                                print("try %d"%ind)
-                    if mind == -1 or cc[mind] <th:
-                        continue
-                    else:
-                        if r==6 and ob1 == 2:
-                            print(mind,flag[N[ob1-1]+mind],q[mind],"dsfnlakfdafd")
-                        cur_ans[N[ob1-1] + mind] = 1
-                        flag[N[ob1-1] + mind] =1
+                        if  len( mind) < k   and q[ind] == 0:
+                            mind.append( ind )
+                    mind.sort(key= lambda i: cc[i],reverse=True)
+
+
+                    for idx in range( len(mind) ):
+                        i = mind[idx]
+                        if cc[i] < th:
+                            break
+                        f = 1
+
+                        # compare with others
+                        for jdx in range(idx):
+                            j = mind[jdx]
+                            #print(np.shape(sol[j + N[ob1-1] : ] ),np.shape( sol[i +N[ob1-1] : ]) )
+                            if np.dot( sol[j + N[ob1-1] ,: ] , sol[i +N[ob1-1] ,: ]) < th:
+                                f = 0
+                                break
+                        if(f ==0 ):
+                            continue
+
+                        cur_center = cur_center/2 +  sol[N[ob1 - 1] + i,:]/2
+                        cur_ans[N[ob1 - 1] + i] = 1
+                        flag[N[ob1 - 1] + i] = 1
+
             ans = np.hstack([ans, cur_ans])
         self.rounded_sol = ans.copy()
         return ans
