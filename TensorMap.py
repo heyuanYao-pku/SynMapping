@@ -1,12 +1,11 @@
 import numpy as np
 import sys
 import matplotlib.pyplot as plt
+from multiprocessing import Process, Value, Array
 import cv2
 import time
-import tensorly as tl
-from tensorly.decomposition import parafac
 import os
-
+from multiprocessing import Process, Manager
 
 class SynTensorMap:
     def __init__(self, shape_num, part_num_list, Map_list, Param_str_list = [], Not_Build = False):
@@ -31,6 +30,7 @@ class SynTensorMap:
             if not os.path.isdir(self.paramkey['SAVE_PATH']):
                 os.mkdir(self.paramkey['SAVE_PATH'])
 
+        np.random.seed(99)
 
 
         if Not_Build==False: # Check Inputs
@@ -82,12 +82,24 @@ class SynTensorMap:
                     self.P[self.indBegin[j]:self.indEnd[j], self.indBegin[i]:self.indEnd[i]] = np.transpose( self.Plist[j][i] )
                     self.P[self.indBegin[i]:self.indEnd[i], self.indBegin[j]:self.indEnd[j]] = self.Plist[j][i]
 
+    def buildC_func(self,x):
+        i, j, k = x
+        tmp = np.dot(self.Plist[j][k], self.Plist[i][j])
+        tmp = np.dot(self.Plist[k][i], tmp)
+        d = np.diag(tmp)
+        d = np.diag(d)
+        return np.where(d > 0, 1, 0)
+
     def buildC(self):
         '''
         计算 Cijk =  Pki * Pjk * Pij 并舍弃对角线以外的值
         '''
         n = self.n
         self.Clist = np.zeros([n,n,n],np.ndarray)
+
+        tmp = np.zeros([n,n,n],np.ndarray)
+
+
         for i in range(n):
             for j in range(n):
                 for k in range(n):
@@ -96,6 +108,7 @@ class SynTensorMap:
                     d = np.diag(tmp)
                     d = np.diag(d)
                     self.Clist[i][j][k] = np.where(d > 0, 1,0)
+
 
     def getRijk(self,i,j,k):
         '''
@@ -381,7 +394,7 @@ class SynTensorMap:
 
         for r in range(n):
             if(sum(sol[r]**2)**0.5 ==0):
-                if(sum(sol[r]**2)) == 0:
+                    print('zero',r)
                     continue
             sol[r] = sol[r] / sum(sol[r]**2)**0.5
 
@@ -426,15 +439,12 @@ class SynTensorMap:
                         # compare with others
                         for jdx in range(idx):
                             j = mind[jdx]
-                            #print(np.shape(sol[j + N[ob1-1] : ] ),np.shape( sol[i +N[ob1-1] : ]) )
                             if np.dot( sol[j + N[ob1-1] ,: ] , sol[i +N[ob1-1] ,: ]) < th:
                                 f = 0
                                 break
                         if(f ==0 ):
                             continue
 
-                        cur_center = cur_center/2 +  sol[N[ob1 - 1] + i,:]/2
-                        cur_center = cur_center / np.sum(cur_center**2)**0.5
                         cur_ans[N[ob1 - 1] + i] = 1
                         flag[N[ob1 - 1] + i] = 1
 
