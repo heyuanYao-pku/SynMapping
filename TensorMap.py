@@ -262,7 +262,7 @@ class SynTensorMap:
         dv = eigvalue[0:l-1] - eigvalue[1:l]
         print("eigvalue",eigvalue)
         m_bar = dv.argmax()+1 # 因为python是从零开始标的
-        #m_bar = max(m_bar,4)
+        #m_bar = max(m_bar,3)
         # 获得AB初值
         tmp  = np.dot( eigvector[:,0:m_bar] , np.diag(eigvalue[0:m_bar])**0.5 )
         #tmp = np.random.random(np.shape(tmp))
