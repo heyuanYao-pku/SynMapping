@@ -149,11 +149,11 @@ class SynTensorMap:
                     self.Wrst[self.indBegin[j]:self.indEnd[j], self.indBegin[i]:self.indEnd[i], k] = self.Rlist[i][j][k] = tmp
 
 
-    def solution(self):
+    def solution(self,m_bar_advice = 0):
 
         self.build_Wrst()
 
-        self.m_bar,self.Ax,self.Bx,self.Cx = self.get_init()
+        self.m_bar,self.Ax,self.Bx,self.Cx = self.get_init(m_bar_advice)
         print('m_bar = ',self.m_bar)
         self.Ax = np.array(self.Ax, np.double)
         self.Bx = np.array(self.Bx, np.double)
@@ -192,41 +192,12 @@ class SynTensorMap:
             else:
                 print("C OK and e3 is ", self.e3)
 
-            '''
-            ans1 = np.zeros(np.shape(self.Wrst), np.float)
-            for c in range(self.m_bar):
-                tmp = np.outer(self.Ax[:, c], self.Bx[:, c])
-                tmp = np.outer(tmp, self.Cx[:, c])
-                tmp = np.reshape(tmp,np.shape(ans1))
-                ans1 += tmp
-            y = np.sum((self.Wrst * (self.R - ans1) ** 2))
-            print("l2 loss is",y)
-            if y<=3000:
-                print("l2 loss is ", y," and break")
-                #break;
-            '''
 
             d =  max((self.e1,self.e2,self.e3))
             print('fraction rate = ',d)
             if d <= self.paramkey['ITER_TOL'] :
                 break
 
-
-
-        #factors = parafac(self.Wrst*self.R,rank = self.m_bar, n_iter_max=100)
-        #print(type(factors))
-        #ans1 = np.zeros(np.shape(self.Wrst),np.float )
-        #ans2 = tl.kruskal_to_tensor(factors)
-        #for c in range(self.m_bar):
-        #    tmp = np.outer(self.Ax[:,c],self.Bx[:,c])
-        #    tmp = np.outer( tmp , self.Cx[:,c] )
-        #    tmp = np.reshape(tmp,np.shape(ans1))
-        #    ans1 += tmp
-        #print(np.sum( (self.Wrst*(self.R-ans1)**2 ) ), np.sum( (self.Wrst*(self.R-ans2)**2 )) , np.sum( (self.Wrst *(ans1-ans2)**2)))
-
-        #_,factors = parafac(self.Wrst*self.R,rank = self.m_bar, n_iter_max=100)
-        #self.Ax = factors[0]
-        #self.Bx = factors[1]
         tmp = self.Bx.dot(np.transpose(self.Ax)) + self.Ax.dot(np.transpose(self.Bx))
         tmp = tmp /2
 
@@ -244,9 +215,15 @@ class SynTensorMap:
 
         return Q
 
+    def multi_sol(self):
 
+        Q1 = self.solution()
+        m_bar_advice = np.int( np.ceil( np.mean(self.mList) ) )
+        m_bar_advice = max((self.m_bar)+1,m_bar_advice)
+        Q2 = self.solution(m_bar_advice = m_bar_advice)
+        return Q1,Q2
 
-    def get_init(self):
+    def get_init(self,m_bar_advice = 0):
 
         self.P = (self.P+np.transpose(self.P))/2
         eigvalue,eigvector = np.linalg.eig(self.P)
@@ -262,7 +239,8 @@ class SynTensorMap:
         dv = eigvalue[0:l-1] - eigvalue[1:l]
         print("eigvalue",eigvalue)
         m_bar = dv.argmax()+1 # 因为python是从零开始标的
-        #m_bar = max(m_bar,3)
+        m_bar = max(m_bar,m_bar_advice)
+
         # 获得AB初值
         tmp  = np.dot( eigvector[:,0:m_bar] , np.diag(eigvalue[0:m_bar])**0.5 )
         #tmp = np.random.random(np.shape(tmp))
@@ -452,6 +430,83 @@ class SynTensorMap:
         self.rounded_sol = ans.copy()
         return ans
 
+    def multi_round(self, th = 0.5, k = 2, multi_sol = None):
+
+        if multi_sol is None:
+            multi_sol = self.multi_sol()
+        #print('shape:' ,np.shape(multi_sol[0]),np.shape(multi_sol[1]) )
+        sol,sol_advice = np.transpose(multi_sol[0] ) , np.transpose(multi_sol[1])
+
+        n, m = np.shape(sol)
+
+        for r in range(n):
+            if(sum(sol[r]**2)**0.5 ==0):
+                    continue
+            sol[r] = sol[r] / sum(sol[r]**2)**0.5
+            if (sum(sol_advice[r] ** 2) ** 0.5 == 0):
+                continue
+            sol_advice[r] = sol_advice[r] / sum(sol_advice[r] ** 2) ** 0.5
+
+        N = np.cumsum(self.mList)
+        flag = np.zeros([n], np.int)
+        ans = np.zeros([n, 0], np.int)
+        for r in range(n):
+            if (flag[r] != 0):
+                continue
+
+            cur_ans = np.zeros([n, 1], np.int)
+            cur_ans[r] = 1
+            flag[r] = 1
+
+            ob = np.where(N > r)
+            ob = np.min(ob)
+
+            cur_center = sol[r, :]
+            cur_center_advice = sol_advice[r, :]
+            if ob < self.n:
+                for ob1 in range(ob + 1, self.n):
+
+                    cc = np.dot(cur_center, np.transpose(sol[N[ob1 - 1] : N[ob1], :]))
+                    q = flag[ N[ob1 - 1]:N[ob1] ]
+                    l = len(cc)
+
+                    mind = []
+
+                    for ind in range(l):
+                        if  q[ind] == 0:
+                            mind.append( ind )
+                    mind.sort(key= lambda i: cc[i],reverse=True)
+                    if(len(mind) > k):
+                        mind = mind[0:k]
+
+                    if(len(mind) > 1):
+                        mind_tmp = [mind[0]]
+                        for ii in range(1,len(mind)):
+                            if(np.dot( cur_center_advice, sol_advice[ N[ob1-1] + mind[ii] ,: ] ) > th ):
+                                mind_tmp.append(mind[ii])
+                        mind = mind_tmp
+
+                    for idx in range( len(mind) ):
+                        i = mind[idx]
+                        if cc[i] < th:
+                            break
+                        f = 1
+
+                        # compare with others
+                        for jdx in range(idx):
+                            j = mind[jdx]
+                            if np.dot( sol[j + N[ob1-1] ,: ] , sol[i +N[ob1-1] ,: ]) < th:
+                                f = 0
+                                break
+                        if(f ==0 ):
+                            continue
+
+                        cur_ans[N[ob1 - 1] + i] = 1
+                        flag[N[ob1 - 1] + i] = 1
+
+            ans = np.hstack([ans, cur_ans])
+        self.rounded_sol = ans.copy()
+        return ans
     ######### Tools ##########
 
     def set_param(self, param):
@@ -462,7 +517,7 @@ class SynTensorMap:
         n = len(param)
         rear = 0
 
-        self.paramkey = {'ITER_TOL':1e-9,
+        self.paramkey = {'ITER_TOL':1e-12,
                          'ITER_DISFUNC':self.dist_max,
                          'ITER_MAXNUM':100,
                          'REG_TOL':100,
@@ -490,6 +545,7 @@ class SynTensorMap:
 
     def dist_max(self, A, B):
         return np.max(np.abs(A-B) )
+
 
 class TensorMapVis:
     def __init__(self, image_list, mList, rouned_sol):
@@ -559,3 +615,4 @@ class TensorMapVis:
                     draw_image[i][j] = colors_set[t][0:3] * 255
             draw_image = draw_image.astype(np.uint8)
             self.draw_image.append(draw_image)
+
