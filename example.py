@@ -65,7 +65,7 @@ def generate_image(num):
 
     return img
 
-n = 20
+n = 80
 m = 6
 mis = 0.3
 inc_rat = 0.5
@@ -75,7 +75,18 @@ data = generate_test_data(n,m,mis,inc_rat)
 Plist, mlist, rbone2gbone, gbone2rbone = data
 
 #np.save(os.path.join(curpath,'data.npy'),data)
+near = 25
 
+check = np.zeros((n,n),np.int)
+
+for i in range(n):
+    for j in range(n):
+        if abs(i-j) > near and not (i<near and j <2*near) and not (j<near and i<2*near) \
+            and not ((n-i) <near and (n-j) < 2*near) and not ((n-j)<near and (n-i) < 2*near) :
+            Plist[i][j] = np.zeros( np.shape(Plist[i][j]) , np.float)
+            continue;
+        check[i][j] =1
+print(check)
 tensor = TensorMap.SynTensorMap(n,mlist,Plist)
 Q = tensor.rounded_solution(0.5)
 #Q = np.load(os.path.join(curpath,'sol.npy'))
