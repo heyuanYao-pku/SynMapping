@@ -187,7 +187,7 @@ class SynTensorMap:
                 print("B OK and e2 is ", self.e2)
 
             if (self.e3 > self.paramkey['ITER_TOL']/10) and np.random.randint(1,4)==1:
-                self.Bx = self.optB()
+                self.Cx = self.optC()
                 self.e3 = self.dist(tmp3, self.Cx)
             else:
                 print("C OK and e3 is ", self.e3)
