@@ -217,7 +217,7 @@ class SynTensorMap:
 
     def multi_sol(self):
 
-        Q1 = self.solution()
+        Q1 = self.solution(5)
         m_bar_advice = np.int( np.ceil( np.mean(self.mList) ) )
         m_bar_advice = max((self.m_bar)+1,m_bar_advice)
         Q2 = self.solution(m_bar_advice = m_bar_advice)
