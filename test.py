@@ -25,16 +25,24 @@ print(tmp[13][14])
 print(  n  )
 #print(mList[0],mList[100],mList[2],mList[102] )
 
+
+near = 10
 for i in range(n):
     for j in range(n):
         if i==j:
             Plist[i][j] = np.eye(mList[i])
             continue
+        '''
+        if abs(i-j) > near and not( i < near and j < 2*near)  \
+                and not( (n-i) < near and (n-j) < 2*near) :
+            Plist[i][j] = np.zeros(np.shape(tmp[j][i]),np.float)
+            continue
+        '''
         Plist[i][j] = np.array( tmp[j][i])
 
 
 tensor = TensorMap.SynTensorMap(n,mList,Plist)
-Q = tensor.rounded_solution(th=0.5,k=1)
+#Q = tensor.rounded_solution(th=0.5,k=1)
 Q = tensor.multi_round(th = 0.5)
 #Q = np.load('example\\Q.npy')
 

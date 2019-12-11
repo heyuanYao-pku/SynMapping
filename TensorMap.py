@@ -187,7 +187,7 @@ class SynTensorMap:
                 print("B OK and e2 is ", self.e2)
 
             if (self.e3 > self.paramkey['ITER_TOL']/10) and np.random.randint(1,4)==1:
-                self.Bx = self.optB()
+                self.Cx = self.optC()
                 self.e3 = self.dist(tmp3, self.Cx)
             else:
                 print("C OK and e3 is ", self.e3)
@@ -217,7 +217,7 @@ class SynTensorMap:
 
     def multi_sol(self):
 
-        Q1 = self.solution()
+        Q1 = self.solution(5)
         m_bar_advice = np.int( np.ceil( np.mean(self.mList) ) )
         m_bar_advice = max((self.m_bar)+1,m_bar_advice)
         Q2 = self.solution(m_bar_advice = m_bar_advice)
